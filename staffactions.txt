@@ -1,0 +1,1657 @@
+var qualifiedStaff		=	[];
+var skillSet			=	[];
+var contactSkillSet		=	[];
+var contactSkillsObj	=	[];
+var isStaffListLoaded	=	false;
+var currentContact	=	'';
+var addStaffResGlob	=	'';
+var phone				= '867d8a67-1d8a-4f4b-a33d-b5c9ab94bb4d';
+//var brandID			=	(contactInfo!=undefined && validate.variable(contactInfo)&&validate.variable(contactInfo.brandId))?contactInfo.brandId:"5a6e67a6-8bfd-45f5-a774-3462cb0c4e4c";
+//var accountID			=	(validate.variable(contactInfo)&&validate.variable(contactInfo.accountPin))?contactInfo.accountPin:"524GH";
+//var userLogin			=	(validate.variable(contactInfo)&&validate.variable(contactInfo.userName))?contactInfo.userName:"s7r@a-cti.com"
+
+var brandID			=	"5a6e67a6-8bfd-45f5-a774-3462cb0c4e4c";
+var accountID		=	"524GH";
+var userLogin		=	"s7r@a-cti.com";
+
+$().ready(function()
+{
+	closureTemplate();
+	loadFunctions();
+});
+$.getScript('/js/jquery.crypt_min.js', function() {});//put this in cloud
+function generateUUID()
+{
+	   var d 		= new Date().getTime();
+	   var uuid 	= 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+	   var r 		= (d + Math.random()*16)%16 | 0;
+	       d 		= Math.floor(d/16);
+	       return (c=='x' ? r : (r&0x7|0x8)).toString(16);
+	   });
+	   return uuid;
+};
+var interactionIdObj	=
+{
+	    "8333d8c0-e22a-4e32-9bf5-0f578461823e": "Event to Talk", 
+	    "70158413-3ae0-4896-80b7-50d411ad0cd2": "WebChat", 
+	    "168d6505-2f63-44ae-887c-e279e6fedcf3": "Branding", 
+	    "21f8349e-48b4-44cc-96a6-c8651962908b": "FormCreator", 
+	    "2e479857-7b74-4e6c-8b53-61e84cedddaa": "Disabled Skill", 
+	    "4e1f2cc6-509a-4fc3-8988-f648e0a50b17": "Client Web Access", 
+	    "56453114-8023-4612-a4c4-bb8184d5bfdd": "Custom", 
+	    "84d52042-cc6d-4df8-acf4-1ecc278f790e": "Email Outbound", 
+	    "b0fdad11-0bf5-457b-804a-2914d546d8c2": "GroupChat", 
+	    "b3485731-3c4e-4eeb-a15e-c5bc41286205": "CallList Outbound", 
+	    "b7fe5108-377d-4601-b160-e19de2132aa3": "user skill sets", 
+	    "ea8b2dae-0f01-4671-9c12-c8c7fd7f08fa": "Repeats"
+}
+if(document.location.href.indexOf('localhost')!=-1)
+contactManagerProfileURL	=	'http://localhost:8888';
+
+var skillFunctions	=	
+{
+		createSkillURL	:contactManagerProfileURL+'/UI/createSkillDetails',
+		createSkill	:	function()
+		{
+			var skillTitle		=	$('#create-skill-title input').val();
+			var interactionType	=	$('#create-skill-interactionType select').val();
+			
+			if(!validate.variable(skillTitle))
+			{
+				showVoiceBox("Entered Valid Skill Title", 5000);
+				return;
+			}
+			if(!validate.variable(interactionType))
+			{
+				showVoiceBox("Entered Valid Interaction Type", 5000);
+				return;
+			}
+			$('#create-skill-new button').unbind('click');
+			var url	=	skillFunctions.createSkillURL+'?skillTitle='+skillTitle+'&interactionType='+getSkillTypeId(interactionType)+'&callback=?';
+			getJSON(url,skillFunctions.createSkillSuccess);
+			
+		},
+		createSkillSuccess:function(data)
+		{
+			var response	=	JSON.parse(data);
+			console.log(response);
+			if(response.status=true)
+			{
+				if(response.isSkillSetCreated==true)
+				showVoiceBox("SkillSet Created", 5000);
+				else if(response.isSkillSetExist==true)
+					showVoiceBox("SkillSet Already Exist", 5000);
+			}
+			else
+				showVoiceBox("Error While Creating skills", 5000);
+			$('#create-skill-new button').unbind('click');
+			$('#create-skill-new button').on('click',function(){
+				 skillFunctions.createSkill();
+			 });
+		},
+		updateSkills : function(id)
+		{
+				var id		=	id.split('_')[1];
+				console.log('Login  : ' +$("#loginId input").val());
+				var param 	= 	"&operation=update" +
+								"&interactionTypeId="+getSkillTypeId($('#skillTypeTitle').val())+
+								"&skillLevel="+$('#'+id+'_level input').val() + 
+								"&title="+$('#'+id+'_title input').val()+
+								"&email="+$("#loginId input").val()+
+								"&url="	+$('#'+id+'_URL input').val()+
+								"&userLogin="+userLogin+
+								"&accountPin="+accountID;
+				console.log(param);
+				url 			= staffFunctions.skillURL+"?uniquepin="+accountID+param+'&callback=?';
+				getJSON(url,skillFunctions.updateSkillSuccess);
+			
+		},
+		insertSkill:function ()
+		{
+			console.log('Login  : ' +$("#loginId input").val());
+			var isvalid	=	true;
+			var param = 
+		    "&operation=insert" +
+		    "&interactionTypeId="+getSkillTypeId($('#skillTypeTitle').val())+
+		    "&skillLevel="+$('#new_level input').val()+ 
+		    "&title="+$('#new_title input').val()+
+		    "&email="+$("#loginId input").val()+
+		    "&url=" +$('#new_URL input').val()+
+		    "&userLogin="+userLogin+
+		    "&accountPin="+accountID;
+			
+			console.log(param);
+			if(!validate.variable(getSkillTypeId($('#skillTypeTitle').val())))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid SkillType", 5000);
+			}
+			if(!validate.variable($('#new_level input').val()))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid SkillLevel", 5000);
+			}
+			if(!validate.variable(parseInt($('#new_level input').val())))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid SkillLevel", 5000);
+			}
+			if(!validate.variable($('#new_title input').val()))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid Title", 5000);
+			}
+			if(!validate.variable($("#loginId input").val()))
+			{
+				isvalid	=	false;
+				showVoiceBox("Invalid Contact", 5000);
+			}
+			if(isvalid)
+			{
+				url 			= staffFunctions.skillURL+"?uniquepin="+accountID+param+'&callback=?';
+				getJSON(url,skillFunctions.insertSkillSuccess);
+			}
+		},
+		insertSkillSuccess:function(data)
+		{
+			console.log(data);
+			var response	=	JSON.parse(data);
+			if(response.status==true)
+			{
+				var updateStatus	=	true;
+				//showVoiceBox("Skills Added Successfully");
+				if(response.isSkillSetExist==true)
+				{
+					if(response.isContactSkillSetInserted==true)
+					{
+						showVoiceBox("Skill Set Inserted", 5000);
+						console.log('The skillSet returned');
+						console.log(response.contactSkillSet);
+						updateStaffSkillOBJ(response.contactSkillSet,true);
+						new staffSkillView().render(getStaffSkill(response.contactSkillSet.contactID));
+						console.log('Skill updates/added successfully');
+
+					}
+					else
+					{
+						updateStatus	=	false;
+						showVoiceBox("Skill Set not Updated", 5000);
+					}
+					
+					if(response.isContactExist==false)
+					{
+						updateStatus	=	false;
+						showVoiceBox("Contact Doesnt Exist", 5000);
+					}
+					if(updateStatus==true)
+					{
+						showVoiceBox("Skills Added Successfully");
+					}
+				}
+				else
+				{
+					updateStatus	=	false;
+					showVoiceBox("SkillSet Doesnt Exist", 5000);
+				}
+				
+			}
+			else
+			{
+				if(response.isLoginExist==false)
+				{
+					showVoiceBox("Contact Doesnt Exist", 5000);
+				}
+				if(response.isContactSkillSetInserted==false)
+				{
+					if(response.isSkillSetExist==false)
+					{
+						showVoiceBox("Invalid skill", 5000);
+					}
+				}
+				if(response.isTitleAlreadyExist==true)
+				{
+					showVoiceBox("Skill Title Already Assigned", 5000);
+				}
+				if(response.isTitleExist==false)
+				{
+					showVoiceBox("Skill Already Exist", 5000);
+				}
+				
+			}
+		},
+		skillSuccess:function(data)
+		{
+				console.log(data);
+		        if(data.isContactSkillSetUpdated || data.isContactSkillSetInserted || data.isContactSkillSetDeleted)
+		        {
+		        	if(data.isContactSkillSetInserted)
+		        		showVoiceBox("Successfully Inserted",5000);
+		        	else if(data.isContactSkillSetUpdated)
+		        		showVoiceBox("Successfully Updated",5000);
+		        	else if(data.isContactSkillSetDeleted)
+	        			showVoiceBox("Successfully Deleted",5000);
+		        	gettingAllSkillandShow();
+		        }
+		        else
+	        	{
+		        	if(!data.isContactSkillSetInserted)
+		        	{
+		        		if(!data.isLoginExist || !data.isSkillSetExist)
+		        		{
+		        			console.log("data.isSkillSetExist:::"	+	data.isSkillSetExist);
+		        			
+		        			if(!data.isSkillSetExist && data.isSkillSetExist != undefined)
+	        				{
+		        				$(".skillTitleU").focus().css("border-color","red");
+		        				showVoiceBox(skillTitle+"\" doesn't exist",5000);
+	        				}
+		        			else if(!data.isTitleExist && !data.isLoginExist && data.login != undefined)
+	        				{
+		        				showVoiceBox("Skill already exist for \""+enteredEId+"\"",5000);
+	        				}
+		        			else if(data.isTitleExist || String(enteredEId).length === 3)
+	        				{
+		        				$("#loginSkillId").focus().css("border-color","red");
+		        				showVoiceBox("\""+enteredEId+"\" login doesn't exist",5000);
+	        				}
+		        		}
+		        		else
+		        		{
+		        			showVoiceBox("Insertion not success",5000);
+		        		}
+		        	}
+		        	else if(!data.isContactSkillSetUpdated)
+		        		showVoiceBox("Updation not success",5000);
+		        	else if(!data.isContactSkillSetDeleted)
+	        			showVoiceBox("Deletion not success",5000);
+	        	}
+		},
+		updateSkillSuccess:function(data)
+		{
+			var response	=	JSON.parse(data);
+			if(response.status==true)
+			{
+				if(response.isContactSkillSetUpdated==true)
+				{
+					console.log('Skill updates/added successfully');
+					showVoiceBox("SkillSet Update Successfully", 5000);
+					console.log('data.contactSkillSet ');
+					console.log(response.contactSkillSet);
+					updateStaffSkillOBJ(response.contactSkillSet);
+					new staffSkillView().render(getStaffSkill(response.contactSkillSet.contactID));
+				}
+				else
+				{
+					console.log('Contactskillnot updated');
+				}
+			}
+			else
+			{
+				if(response.isContactExist==false)
+				{
+					showVoiceBox("Contact Doesnt Exist", 5000);
+					console.log('response.isContactExist ' +response.isContactExist);
+					if(response.isSkillSetExist==false)
+					{
+						showVoiceBox("isSkillSetExist Doesnt Exist", 5000);
+						console.log('response.isSkillSetExist ' +response.isSkillSetExist);
+					}
+				}
+			
+			}
+		},
+		deleteSkillSuccess:function(data,skillSetID,contactID)
+		{
+			var response	=	JSON.parse(data);
+			console.log('response :skillSetID'+skillSetID);
+			console.log(response);
+			
+			if(response.status==true)
+			{
+				console.log('response.success ' +response.success);
+				if(response.isContactSkillSetDeleted == true)
+				{
+					deleteStaffSkill(skillSetID);
+					new staffSkillView().render(getStaffSkill(contactID));
+					console.log('Skill Deleted');
+				}
+			}
+			else
+			{
+				if(response.isContactExist==false)
+				{
+					showVoiceBox("Contact Doesnt Exist", 5000);
+				}
+				if(response.isLoginExist==false)
+				{
+					showVoiceBox("Login Doesnt Exist", 5000);
+				}
+				
+				if(response.isContactSkillSetInserted==false)
+				{
+					if(response.isSkillSetExist==false)
+					{
+						showVoiceBox("Invalid skill", 5000);
+					}
+				}
+			}
+		},
+		deleteSkill:function (id,contactID)
+		{
+			var skillSetID=id.split('_')[1];
+			var isValid		=true;
+			var param = 
+			    "&operation=delete&interactionTypeId="+getSkillTypeId($('#skillTypeTitle').val())+"&skillLevel="+$('#'+skillSetID+'_level input').val() + 
+			    "&title="+$('#'+skillSetID+'_title input').val()+"&email="+$("#loginId input").val()+"&url=" +$('#'+skillSetID+'_URL input').val()+
+			    "&userLogin="+userLogin+"&accountPin="+accountID;
+			
+			if(!validate.variable(getSkillTypeId($('#skillTypeTitle').val())))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid SkillType", 5000);
+				console.log('Enter valid SkillType');
+			}
+			if(!validate.variable($('#'+skillSetID+'_level input').val()))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid SkillLevel", 5000);
+				console.log('Enter valid SkillLevel');
+			}
+			if(!validate.variable($('#'+skillSetID+'_title input').val()))
+			{
+				isvalid	=	false;
+				showVoiceBox("Enter valid Title", 5000);
+				console.log('Enter valid Title');
+			}
+			if(!validate.variable($("#loginId input").val()))
+			{
+				isvalid	=	false;
+				showVoiceBox("Invalid Login", 5000);
+				console.log('Enter valid Login');
+			}
+			url 			= staffFunctions.skillURL+"?uniquepin="+accountID+param+'&callback=?';
+			getJSON(url,skillFunctions.deleteSkillSuccess,skillSetID,contactID);
+				    
+		}
+	};
+var staffFunctions = 
+{
+		URL 				: 	contactManagerProfileURL+'/UI/updatestaffinfo',
+		getStaffURL			:   contactManagerProfileURL+'/UI/getStaff',
+		addnewstaffURL		:	contactManagerProfileURL+'/UI/addnewstaffnew',
+		resetPasswordURL	:	contactManagerProfileURL+'/UI/resetpasswordlink',
+		skillURL			: 	contactManagerProfileURL+'/UI/updateSkillDetails',
+		addSkillURL			: 	contactManagerProfileURL+'/UI/createSkillDetails',
+		getLoginAndSkill	: 	contactManagerProfileURL+'/UI/getLoginAndSkill',
+		
+		getStaff:function()
+		{
+			var url	=	staffFunctions.getStaffURL+'?uniquepin='+accountID;
+			getJSON(url,loadStaff);
+		},
+		savePassword:function(contactID)
+		{
+			var pwd		=	$('#password_new').val();
+			var re_pwd	=	$('#re-password_new').val();
+			var login	=	$('#loginId input').val();
+			if(!validate.variable(login))
+			{
+				showVoiceBox("Invalid Login", 5000);
+				return false;
+			}
+			if(validate.variable(pwd))
+			{
+				if( validate.variable(re_pwd) && pwd == re_pwd)
+				{
+					var param					=	prepareUpdateObject(ID);
+					if(param.isNew==true)
+					{
+						//validate the login
+					}
+			 		var pwEncrypt = $().crypt
+			 		(
+			 				{
+			 					method: 'md5',
+			 					source: password
+			 				}
+			 		);
+			 		param.password				=	pwEncrypt;
+			 		var url	=	staffFunctions.addnewstaffURL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+"&callback=?";
+			 		showVoiceBox("saving..", 5000);
+			 		getJSON(url,staffFunctions.staffSuccess);
+				}
+				
+			}
+			
+		},
+		updatePasswordAdmin:function()
+		{
+			var login		   			=	$("#loginId input").val();
+		 	var ID 						= 	$("#loginId input").attr('id');
+		 	console.log('contactID : ' +ID);
+		 	var password       			=	$("#admin_pass").val();
+		 	var confirmPassword       	=	$("#admin_confirmpass").val();
+		 	if(password	==	confirmPassword)
+	 		{
+		 		var param					=	prepareUpdateObject(ID);
+		 		var pwEncrypt = $().crypt
+		 		(
+		 				{
+		 					method: 'md5',
+		 					source: password
+		 				}
+		 		);
+		 		param.password				=	pwEncrypt;
+		 		var url	=	staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+"&callback=?";
+		 		//"/UI/updatestaffinfo?username="+login+"&password="+encodeURIComponent(password)+'&brandId='+brandID+'&uniquePin='+accountID+'&logincontactid='+loginContactId;
+		 		showVoiceBox("saving..", 5000);
+		 		getJSON(url,staffFunctions.staffSuccess);
+		 		
+	 		}
+		 	else
+	 		{
+		 		showError('Password Doesn\'t Match');
+	 		}
+		},
+		addStaff:function(id)
+		{
+			
+				var param		=	prepareUpdateObject(id);
+				console.log('addStaff : The param is : ');
+				console.log(param);
+				var password	=	$('#password_new input').val();
+				console.log('password : '+password+'"');
+				var re_password	=	$('#re-password_new input').val();
+				var name		=	$('#staffName').val();
+				console.log('param ' +param);
+				console.log('param ' +JSON.stringify(param));
+				
+				if(validate.variable(param)	&& param.isNew == true && (password==re_password) &&validate.variable(password) && validate.variable(name))
+				{
+					var name	=	$("#staffName").val();
+					param.name	=	name;
+					param.firstName	=	$.trim(name[0]);
+					param.lastName	=	$.trim(name[1]);
+					param.password	=	password;
+					
+					param.login			=	$('#loginId input').val();
+					if(validateMandatoryFields(param))
+					{
+						var designation	=	$('#designation input').val();
+						var phone		=	(validate.variable($('#phone_new input').val())?$('#phone_new input').val():'');
+						var login		=	$('#loginId input').val();
+						if(!validate.email(login))
+						{
+							showVoiceBox("Invalid Email", 5000);
+							return ;
+						}
+						var firstName	=	name.split(' ')[0];
+						var lastName	=   (name.split(' ')[1]!=	undefined ? name.split(' ')[1]:'');
+						
+						var pwEncrypt = $().crypt({
+		 					method: 'md5',
+		 					source: password
+		 				});
+						console.error('addnewstaffURL : ' +staffFunctions.addnewstaffURL)
+						var url			=	staffFunctions.addnewstaffURL+'?firstName='+firstName+'&lastName='+lastName+'&designation='+designation+'&phone='+phone+'&password='+pwEncrypt+
+						'&login='+login+'&uniquePin='+accountID+'&brandId='+brandID+'&id='+currentContact.id+'&callback=?';
+						showVoiceBox("saving..", 5000);
+						getJSON(url,staffFunctions.addStaffSuccess);
+					}
+					else
+					{
+						showVoiceBox("Enter mandatory information", 444);
+					}
+				}
+				else
+				{
+					console.log('Validation error');
+					console.log(validate.variable(param)	&& param.isNew == true && (password==re_password) && validate.variable(name));
+				}
+				
+				//alert('before ajax call');
+		},
+		updateName:function(ID)
+		{
+			var value	=	$("#staffName").val();
+			var name	=	value.split(' ');
+			var param	=	prepareUpdateObject(ID);
+			
+			param.firstName	=	$.trim(name[0]);
+			param.lastName	=	$.trim(name[1]);
+			
+			url 			= staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+"&callback=?";
+			showVoiceBox("saving..", 5000);
+			getJSON(url,staffFunctions.staffSuccess);
+		},
+		updateStatus:function(contactID)
+		{
+			var param		=	prepareUpdateObject(contactID);
+			console.log('param.deleted '+param.deleted);
+			console.log('param.deleted '+!param.deleted);
+			param.deleted	=	!param.deleted;
+			url 			= 	staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+"&callback=?";
+			showVoiceBox("saving..", 5000);
+			getJSON(url,staffFunctions.staffSuccess);
+		},
+		updatePhone:function(contactID,contactMethodID)
+		{
+			var value					=	$("#"+contactMethodID+" input").val();
+			var linkedContactMethod		=	"";
+			var param					=	prepareUpdateObject(contactID,contactMethodID);
+			var password       			=	$("#admin_pass").val();
+		 	var confirmPassword       	=	$("#admin_confirmpass").val();
+		 	
+		 	
+				if(validate.variable(param.isNew) && param.isNew == true )
+				{
+					if(validate.variable(login))
+					{
+						if(validate.variable(contactMethodID) && validate.variable(value))
+						{
+							$.each(param.linkedContactMethods,function(key,contactMethod)
+							{
+								if(contactMethod.id==contactMethodID)
+								{
+									console.log(contactMethod.value+' ' +value);
+									contactMethod.value	=	encodeURIComponent(value);
+								}
+							});
+						}
+						console.log(param);
+						delete param['deleted'];
+						url 		= 	staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+"&callback=?";
+						showVoiceBox("saving..", 5000);
+						getJSON(url,staffFunctions.staffSuccess);
+					}
+					else
+					{
+						showVoiceBox("Login cannot be blank", 3000);
+					}
+				}
+				else
+				{
+					if(validate.variable(contactMethodID) && validate.variable(value))
+					{
+						$.each(param.linkedContactMethods,function(key,contactMethod)
+						{
+							if(contactMethod.id==contactMethodID)
+							{
+								console.log(contactMethod.value+' ' +value);
+								contactMethod.value	=	value;
+							}
+						});
+					}
+					console.log(param);
+					delete param['deleted'];
+					url 		= 	staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+"&callback=?";
+					showVoiceBox("saving..", 5000);
+					getJSON(url,staffFunctions.staffSuccess);
+				}
+	 		
+		},
+		updateDesignation:function(ID)
+		{
+			var param	=	prepareUpdateObject(ID);
+			var value	=	$("#designation input").val();
+			if(validate.variable(value))
+			{
+				showVoiceBox("saving..", 5000);
+				console.log("value : " +value);
+				param.title	=	encodeURIComponent(value);
+				console.log(param);
+				url 		= staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+'&callback=?';
+				getJSON(url,staffFunctions.staffSuccess);
+			}
+		},
+		staffSuccess : function(responseData)
+		{
+			console.log(responseData);
+			var updatedContactObjServer	=	'';
+			if((typeof(responseData)=='string'))
+				responseData	=	JSON.parse(responseData);
+			
+			if(responseData.success	==	true)
+			{
+				updatedContactObjServer	=	responseData.contact[0];
+				console.log('updatedContactObjServer : ' +updatedContactObjServer);
+				
+				$.each(qualifiedStaff,function(key,staff)
+				{
+					if(staff.id	==	updatedContactObjServer.id)
+					{
+						console.log((staff.id ==	updatedContactObjServer.id )+' key : '+key +' staff.id : ' +staff.id);
+						
+						qualifiedStaff[key].title		=	(validate.variable(updatedContactObjServer.title)?updatedContactObjServer.title:"");
+						qualifiedStaff[key].password	=	updatedContactObjServer.password;
+						
+						var statusDom	='';
+						if(updatedContactObjServer.deleted ==	true)
+						{
+							statusDom	='<i class="icon-typicons-14"  style="width:63px">Inactive</i>';
+							console.log('show tick to make it active');
+							$('#history-notes-tasks').hide();
+						}
+						else
+						{
+							statusDom	=	'<i class="icon-iconmonstr-check-mark-icon"style="width:63px">Active</i>';
+							console.log('show tick to make it active');
+							new staffSkillView().render(getStaffSkill(staff.id));
+						}
+						console.log("statusDom " +statusDom);
+						$('#staff-list-ul #'+updatedContactObjServer.id+' button').html(statusDom);
+						
+						qualifiedStaff[key].deleted = updatedContactObjServer.deleted;
+						
+						if(validate.variable(updatedContactObjServer.firstName))
+						{
+							qualifiedStaff[key].firstName	=	updatedContactObjServer.firstName.substring(0,1).toUpperCase()+updatedContactObjServer.firstName.substring(1);
+						}
+						else
+						{
+							qualifiedStaff[key].firstName='';
+						}
+						
+						if(validate.variable(updatedContactObjServer.lastName))
+						{
+							qualifiedStaff[key].lastName	=	updatedContactObjServer.lastName.substring(0,1).toUpperCase()+updatedContactObjServer.lastName.substring(1);
+							qualifiedStaff[key].name 		= 	updatedContactObjServer.firstName+" "+updatedContactObjServer.lastName;
+						}
+						else
+						{
+							qualifiedStaff[key].lastName	= '';
+							qualifiedStaff[key].name = updatedContactObjServer.firstName+" "+updatedContactObjServer.lastName;
+						}
+						//update the linked contactMETHOD Also
+						console.log(updatedContactObjServer.linkedContactMethods);
+						qualifiedStaff[key].linkedContactMethods	=	updatedContactObjServer.linkedContactMethods;
+						console.log(qualifiedStaff);
+					}
+				});
+				console.log("Staff updated successfully!!!");
+				showVoiceBox("Updated", 5000);
+			}
+			else
+			{
+				console.error('Error while updating the staff information');
+			}
+			
+		},
+		addStaffSuccess:function(responseData)
+		{
+			//alert('data.success ' +responseData);
+			var updatedContactObjServer	=	'';
+			console.log(responseData);
+			if(typeof(responseData)=='string')
+			responseData	=	JSON.parse(responseData);
+			addStaffResGlob	=	responseData;
+			if(responseData.success	==	true)
+			{
+				showVoiceBox("Staff Added Successfully",6000);
+				updatedContactObjServer			=	responseData.contact;
+				console.log('updatedContactObjServer : ');
+				console.log(updatedContactObjServer);
+				console.log(updatedContactObjServer.id);
+				
+				$.each(qualifiedStaff,function(key,staff)
+				{
+					console.log('staff.id  ;' +staff.id);
+					if(staff.id	==	updatedContactObjServer.id)
+					{
+						console.log('staff');
+						console.log(staff);
+						staff	= updatedContactObjServer;
+						console.log(staff);
+						staff.title	=	(validate.variable(updatedContactObjServer.title)?updatedContactObjServer.title:"");
+						
+						var statusDom	=	updatedContactObjServer.deleted ?'<i class="icon-iconmonstr-check-mark-icon">{print $user.deleted }</i>':'<i class="icon-typicons-14" ></i>';
+						console.log("statusDom " +statusDom);
+						$('#staff-list-ul #'+updatedContactObjServer.id+' button').html(statusDom);
+			    		
+						if(validate.variable(updatedContactObjServer.firstName))
+						{
+							staff.firstName	=	updatedContactObjServer.firstName.substring(0,1).toUpperCase()+updatedContactObjServer.firstName.substring(1);
+						}
+						else
+						{
+							staff.firstName='';
+						}
+						
+						if(validate.variable(updatedContactObjServer.lastName))
+						{
+							staff.lastName	=	updatedContactObjServer.lastName.substring(0,1).toUpperCase()+updatedContactObjServer.lastName.substring(1);
+							staff.name 		= 	updatedContactObjServer.firstName+" "+updatedContactObjServer.lastName;
+						}
+						else
+						{
+							staff.lastName	= '';
+							staff.name = updatedContactObjServer.firstName+" "+updatedContactObjServer.lastName;
+						}
+						staff.isNew			=	false;
+						staff.login			=	updatedContactObjServer.login
+						console.log('The dom got updated' +qualifiedStaff[key].login);
+						console.log(updatedContactObjServer.linkedContactMethods);
+						qualifiedStaff[key].linkedContactMethods	=	updatedContactObjServer.linkedContactMethods;
+						console.log(qualifiedStaff);
+						qualifiedStaff.splice(0, 1, staff);
+					}
+				});
+				$('#designation input').unbind('change');
+				$('#designation input').change(function(){
+					staffFunctions.updateDesignation(updatedContactObjServer.id);
+				});
+					console.log(qualifiedStaff);
+			}
+			else
+			{
+				console.log('data.isLoginExist : '+responseData.isLoginExist);
+				if(responseData.isLoginExist==true)
+				{
+					showVoiceBox("Login already exist.",3000);
+				}
+			}
+		}
+};
+
+function bindEvents()
+{
+	$('#staff-list-ul li').unbind('click');
+	$('#staff-list-ul li').on('click',function()
+	{
+		console.log('LI click event visited !!!'+this.id);
+		$('#staff-list-ul li').removeClass('selected');
+		$('#staff-list-ul  #'+this.id).addClass('selected');
+		document.location.href=document.location.href.split('#')[0]+'#editStaff/'+this.id;
+	});
+	$('#create-skill-cancel').unbind('click');
+	$('#create-skill-cancel').on('click',function(){
+		$('#create-skill-title input').val('');
+		$('#createSkill').hide();
+		$('#skillsli button').hide();
+	});
+}
+
+function filterInvalidStaffInfo(personObj)
+{
+	$.each(personObj,function(key,contact)
+	{
+		if(validate.variable(contact.login))
+		{
+			if(validate.variable(contact.firstName))
+			{
+				contact.firstName	=	contact.firstName.substring(0,1).toUpperCase()+contact.firstName.substring(1);
+			}
+			else
+			{
+				contact.firstName='';
+			}
+			
+			if(validate.variable(contact.lastName))
+			{
+				contact.lastName	=	contact.lastName.substring(0,1).toUpperCase()+contact.lastName.substring(1);
+				contact.name = contact.firstName+" "+contact.lastName;
+			}
+			else
+			{
+				contact.lastName	= '';
+				contact.name = contact.firstName+" "+contact.lastName;
+			}
+			contact.title	=	(validate.variable(contact.title)?contact.title:"");
+			contact.isNew=false;
+			delete contact['comments'];
+			qualifiedStaff.push(contact);
+		}
+		else
+		{
+			console.log('No valid login ' +contact.id);
+		}
+	});
+	return qualifiedStaff;
+	
+}
+function loadStaff(data)
+{
+	console.log(data );
+	var idInURL	=	'';
+	if(document.location.href.indexOf('#editStaff')!=-1 && validate.variable(document.location.href.split('#editStaff')[1]))
+	{
+		idInURL =	document.location.href.split('#editStaff/')[1];
+		this.id	=	idInURL;
+	}
+	
+	if(data.success	==	true)
+	{
+		showVoiceBox("Staffs loaded successfully",6000);
+		
+		skillSet			=	data.skillSet;
+		contactSkillSet		=	data.contactSkillSet;
+		isStaffListLoaded	=	true;	
+		
+		qualifiedStaff	=	filterInvalidStaffInfo(data.person);
+		
+		if(document.location.href.indexOf('#editStaff/') != -1 && validate.variable(document.location.href.split("#editStaff/")[1]))
+		document.location.href=document.location.href.split('#')[0]+'#editStaff/'+this.id;
+		else
+			document.location.href=document.location.href.split('#')[0]+'#editStaff/'+qualifiedStaff[0].id;
+		
+		new staffListView().render(qualifiedStaff,this.id);
+	}
+	else
+	{
+		console.log("Try Again");
+	}
+}
+function sortAgents(list)
+{
+	var listItems = $('#staff-list-ul li').get()
+	  
+		listItems.sort(function(a,b)
+		{ 
+		   var compA = $(a).find('.sort').val().toUpperCase();
+		   var compB = $(b).find('.sort').val().toUpperCase();
+		   return (compA < compB) ? -1 : (compA > compB) ? 1 : 0;
+		});
+		
+		$(list).html(listItems);
+}
+
+function doAjaxCall(methodType,Url,params,contentType,callBackFunction)
+{
+	console.log(params);
+	if(validate.variable(Url) )
+	{
+		$.ajax({
+			 cache      : false,
+	         type		:	methodType,
+	         url		:	Url,
+	         data		:	params,
+	         contentType:	contentType,
+	         success	: 	function(data,text,jqXHR)
+	         {
+	        	 console.log('text : ' +text + ' jqXHR '+ jqXHR.status);
+	        	 callBackFunction(data);
+	         }
+	     });
+	}
+}
+function getJSON(url,callBackFunction,param1,param2)
+{
+	$.getJSON(url,function(data,jqXHR) 
+	{
+		
+		if(jqXHR=="success")
+		{
+			console.log('Invoking call back ' + param1 +' param2 '+param2);
+			callBackFunction(data,param1,param2);
+		}
+	});
+}
+function getStaffDetail(staffID)
+{
+	var res	=	'';
+	
+	$.each(qualifiedStaff,function(key,staff)
+	{
+		if(staff.id	==	staffID)
+		{
+			console.log((staff.id ==staffID )+' key : '+key +' staff.id : ' +staff.id);
+			console.log(staff.id);
+			res =	qualifiedStaff[key];
+		}
+	});
+	
+	return res;
+}
+function getStaffSkill(staffID)
+{
+	var skillListOBJ	=	[];
+	console.info("ContactID  : "+staffID);
+	$.each(contactSkillSet,function(key,contactSkillObj)
+	{
+		var skillOBJtmp	=	{};
+		if(contactSkillObj.contactID == staffID)
+		{
+			console.info("Both match : "+contactSkillObj.contactID);
+			console.log(contactSkillObj);
+			console.info("contactSkillObj.skillSetID : "+contactSkillObj.id);
+			console.info("skillSet : "+skillSet.length);
+			$.each(skillSet,function(key,skillSetObj)
+			{
+				if( skillSetObj.skillSetId	==	contactSkillObj.id )
+				{
+					console.log('title : ' + skillSetObj.title+' level: ' + contactSkillObj.skillLevel +' Type : ' + interactionIdObj[skillSetObj.skillSetTypeId]);
+					
+					skillOBJtmp.title			=	skillSetObj.title;
+					skillOBJtmp.level			=	contactSkillObj.skillLevel;
+					skillOBJtmp.interactionType	=	interactionIdObj[skillSetObj.skillSetTypeId];
+					skillOBJtmp.contactID		=	contactSkillObj.contactID;
+					skillOBJtmp.accountID		=	contactSkillObj.accountID;
+					skillOBJtmp.id				=	contactSkillObj.id;
+					skillListOBJ.push(skillOBJtmp);
+				}
+			});
+			console.info("skillListOBJ : "+skillListOBJ);
+		}
+	});
+	
+	return skillListOBJ;
+}
+
+function updateStaffSkillOBJ(contactSkillSetl,isInsert)
+{
+	var skillListOBJ	=	[];
+	
+	console.log('isInsert ');
+	console.log(isInsert);
+	console.log('contactSkillSetl ');
+	console.log(contactSkillSetl);
+	$.each(contactSkillSet,function(key,contactSkillObj)
+	{
+		var skillOBJtmp	=	{};
+		
+		if(contactSkillObj.contactID == contactSkillSetl.contactID)
+		{
+			console.log(contactSkillObj);
+			
+			$.each(skillSet,function(key,skillSetObj)
+			{
+				if(skillSetObj.skillSetId	==	contactSkillObj.skillSetID)
+				{
+					console.log('title : ' + skillSetObj.title+' level: ' + contactSkillObj.skillLevel +' Type : ' + interactionIdObj[skillSetObj.skillSetTypeId]);
+					console.log('Updated info is : ');
+					console.log('title : '+contactSkillSetl+' level: '+contactSkillSetl.skillLevel);
+					
+					skillOBJtmp.title				=	skillSetObj.title;
+					skillOBJtmp.level				=	contactSkillSetl.skillLevel;
+					contactSkillObj.skillLevel		=	contactSkillSetl.skillLevel;
+					skillSetObj.interactionType		=	interactionIdObj[skillSetObj.skillSetTypeId];
+					contactSkillObj.contactID		=	contactSkillObj.contactID;
+					skillOBJtmp.contactID			=	contactSkillObj.contactID;
+					contactSkillObj.accountID		=	contactSkillObj.accountID;
+					contactSkillObj.id				=	contactSkillSetl.id;
+					
+					console.log('Updated skill set information is ');
+					console.log(contactSkillObj);
+					skillListOBJ.push(skillOBJtmp);
+				}
+			});
+		}
+	});
+	if(validate.variable(isInsert)&&isInsert==true)
+	{
+		console.log('The contactSkill Not Available ');
+		var newContactSkill				=	new Object();
+		$.each(skillSet,function(key,skillSetObj)
+			{
+				if(skillSetObj.skillSetId	==	contactSkillSetl.skillSetID)
+				{
+					newContactSkill.title			=	skillSetObj.title;
+				}
+			});
+					
+		
+		newContactSkill.level			=	contactSkillSetl.skillLevel;
+		//newContactSkill.interactionType	=	interactionIdObj[skillSetObj.skillSetTypeId];
+		newContactSkill.contactID		=	contactSkillSetl.contactID;
+		newContactSkill.accountID		=	contactSkillSetl.accountID;
+		newContactSkill.id				=	contactSkillSetl.id;
+		newContactSkill.brandID			=	contactSkillSetl.brandID;
+		newContactSkill.url				=	contactSkillSetl.url;
+		newContactSkill.createdDate		=	contactSkillSetl.createdDate;
+		console.log('newContactSkill '+contactSkillSet.length);
+		console.log(newContactSkill);
+		
+		contactSkillSet.push(newContactSkill);
+		console.log('newContactSkill AFTER INSERTING'+contactSkillSet.length);
+		//newContactSkill	=	true;
+	}
+	
+	//return skillListOBJ;
+}
+function deleteStaffSkill(skillSetID)
+{
+	var skillListOBJ	=	[];
+	console.log('skillSetID ');
+	console.log(skillSetID);
+	var pos				=	'';
+	
+	$.each(contactSkillSet,function(key,contactSkillObj)
+	{
+		if(contactSkillObj.id == skillSetID)
+		{
+			pos	=	key;
+             console.log('ID Matched' + key);
+             console.log(contactSkillSet);
+             return;
+		}
+		
+	});
+	
+	contactSkillSet.splice(pos,1);	
+	return skillListOBJ;
+}
+function prepareUpdateObject(staffID,contactMethodID)
+{
+	var contactOBJ			=	'';
+	var linkedContactMethod	=	'';
+	var contactMethod		=	'';
+	var updateContactJSON	=	{};
+	
+	//iterate the qualified obejct with the contactid and pick the one and format accordingly
+	$.each(qualifiedStaff,function(key,staff)
+	{
+		if(staff.id	==	staffID)
+		{
+			console.log((staff.id ==staffID )	+' key : '+key +' staff.id : ' +staff.id);
+			console.log(staff.id);
+			contactOBJ =	jQuery.extend(true, {}, qualifiedStaff[key]);
+		}
+	});
+	var contactMethodExist	=	false;
+			//updateContactJSON.accountID		:	"",
+			updateContactJSON.id				=	contactOBJ.id,//contactid
+			updateContactJSON.brandID			=	contactOBJ.brandID,
+			updateContactJSON.firstName			=	contactOBJ.firstName,
+			updateContactJSON.lastName			=	contactOBJ.lastName,
+			updateContactJSON.deleted			=	contactOBJ.deleted,
+			updateContactJSON.title				=	encodeURIComponent(contactOBJ.title),
+			updateContactJSON.password			=	contactOBJ.password
+			updateContactJSON.isNew				=	contactOBJ.isNew;
+			try
+			{
+				if(validate.variable(contactMethodID))
+				{
+							$.each(contactOBJ.linkedContactMethods,function(index,contactMethod)
+							{
+								if(contactMethod.id	==	contactMethodID)
+								{
+									contactMethodExist	=	true;
+									updateContactJSON.linkedContactMethods	=	[contactMethod]
+								}
+							});
+							if(contactMethodExist==false)
+							{
+								var contactMethod	=	defaultContactMethodList();
+								contactOBJ.linkedContactMethods.push(contactMethod);	
+							}
+				}
+			}
+			catch(e)
+			{
+				console.log(e);
+			}
+			console.log(updateContactJSON);
+			return updateContactJSON;
+}
+function getSkillTypeId(skillValue)
+{
+	if(skillValue === "Event to Talk")
+		return "8333d8c0-e22a-4e32-9bf5-0f578461823e";
+	else if(skillValue === "WebChat")
+		return "70158413-3ae0-4896-80b7-50d411ad0cd2";
+	else if(skillValue === "Branding")
+		return "168d6505-2f63-44ae-887c-e279e6fedcf3";
+//	else if(skillValue === "Disabled-Branding")
+//		return "21f8349e-48b4-44cc-96a6-c8651962908b";
+	else if(skillValue === "FormCreator")
+		return "21f8349e-48b4-44cc-96a6-c8651962908b";
+	else if(skillValue === "Disabled Skill")
+		return "2e479857-7b74-4e6c-8b53-61e84cedddaa";
+	else if(skillValue === "Client Web Access")
+		return "4e1f2cc6-509a-4fc3-8988-f648e0a50b17";
+	else if(skillValue === "Custom")
+		return "56453114-8023-4612-a4c4-bb8184d5bfdd";
+	else if(skillValue === "Email Response")
+		return "84d52042-cc6d-4df8-acf4-1ecc278f790e";
+	else if(skillValue === "Email Outbound")
+		return "a7359531-3e43-4da1-be98-5a1392638e42";
+	else if(skillValue === "GroupChat")
+		return "b0fdad11-0bf5-457b-804a-2914d546d8c2";
+	else if(skillValue === "CallList Outbound")
+		return "b3485731-3c4e-4eeb-a15e-c5bc41286205";
+	else if(skillValue === "user skill sets")
+		return "b7fe5108-377d-4601-b160-e19de2132aa3";
+	else if(skillValue === "Repeats")
+		return "ea8b2dae-0f01-4671-9c12-c8c7fd7f08fa";
+}
+var dom;
+function addSkill()
+{
+	if($('#history-notes-tasks').html() == "")
+	{
+		// <ul id = "contactsTickets" class="unstyled contact-ticket-list" >
+		//construct a dom and then append it.
+		var dom	=	document.createElement('ul');
+		$(dom).attr("id",'contactsTickets').attr('role','button').addClass('.unstyled .contact-ticket-list');
+		//var li	=	'<li id="" class="ticket" role="button"><i class="icon-fontawesome-webfont"></i><h5 class="">Interaction Type : <span class="contact-number muted"></span></h5><ul class="muted nav nav-pills"><li id="new_title">	Title 		: <input type="text" value="" placeholder="Title"></li><li id="new_level">	Level 		: <input type="text" value="" placeholder="Skill Level"></li><li id="new_URL">		URL 		: <input type="text" value="" placeholder="URL(optional)"></li><li></li><li id="new_type">	Skill Type 	:<select id="skillTypeTitle">WebChat<option >WebChat</option><option>Event to Talk</option><option  ="">Branding</option><option  ="">FormCreator</option><option >Disabled Skill</option><option >Client Web Access</option><option >Custom</option><option >Email Response</option><option >Email Outbound</option><option >GroupChat</option><option >CallList Outbound</option><option >user skill sets</option><option >Repeats</option></select></li><button id="updateSkill_new" class="pull-right" data-original-title="Status" data-placement="left" onclick="skillFunctions.insertSkill(this.id);">Insert Skill</button></ul></li>';
+		$('#history-notes-tasks').html($(dom).append(newSkillOBJ));
+		$('#history-notes-tasks').show();
+	}
+	else
+	{
+		$('#contactsTickets').prepend(newSkillOBJ);
+	}
+}
+	
+	
+var newSkillOBJ	='<li id="" class="ticket" role="button">'+
+				'<i class="icon-fontawesome-webfont"></i>'+
+				'<h5 class="">Interaction Type : <span class="contact-number muted"></span>'+
+				'</h5><ul class="muted nav nav-pills">'+
+				'<li id="new_title">	Title 		: <input type="text" value="" placeholder="Title"></li>'+
+				'<li id="new_level">	Level 		: <input type="text" value="" placeholder="Skill Level"></li>'+
+				'<li id="new_URL">		URL 		: <input type="text" value="" placeholder="URL(optional)"></li>'+
+				'<li></li>'+
+				'<li id="new_type">	Skill Type 	:<select id="skillTypeTitle">WebChat<option >WebChat</option>'+
+				'<option>Event to Talk</option><option>Branding</option><option>FormCreator</option>'+
+				'<option>Disabled Skill</option>'+
+				'<option>Client Web Access</option><option>Custom</option>'+
+				'<option>Email Response</option><option>Email Outbound</option>'+
+				'<option>GroupChat</option><option>CallList Outbound</option>'+
+				'<option>user skill sets</option>'+
+				'<option>Repeats</option>'+
+				'</select></li><button id="updateSkill_new" class="pull-right" data-original-title="Status" data-placement="left" onclick="skillFunctions.insertSkill(this.id);">Insert Skill</button></ul>'+
+				'</li>';
+
+$('#admin_changepassword').unbind('click');
+$('#admin_changepassword').on('click',function(){
+	$('#savepwd_btn').show();
+	$('#passwordLink_btn').hide();
+	$(".passworddiv input").removeAttr("readonly","readOnly");
+});
+
+$('#savepwd_btn').unbind('click');
+$('#savepwd_btn').on('click',function(){
+	staffFunctions.updatePasswordAdmin();
+});
+
+function resetPasswordLink(loginID)
+{
+	console.info("Inside resetPasswordLink funciton. ");
+	var url	=	staffFunctions.resetPasswordURL+'?loginID='+loginID+'&brandid='+brandID;
+	doAjaxCall("GET", url, '', 'text/javascript', passwordSuccess);
+}
+function changePasswordAdminSuccess(data)
+{
+	console.info("data  : "+data);
+}
+function passwordSuccess(data)
+{
+	console.log('Password LINK SENT successfully! ' + data);
+	if("Login Id does not exist" ==  data)
+	{
+	   showVoiceBox("Problem in sending resetpassword link.Please try again.",6000);
+	}
+}
+function loadFunctions()
+{
+	$("#resetPasswordli a").unbind('click');
+	$("#resetPasswordli a").on('click',function(){
+		$("#emailspan").html($("#loginId input").val());
+		$("#reset_passPop").show();
+		$("#history-notes-tasks").hide();
+		$("#createSkill").hide();
+		$('#skillsli button').hide();
+		$('#passwordLink_btn').hide();
+		$('#admin_changepassword').attr('checked',true)
+	});
+	$("#skillsli a").unbind('click');
+	$("#skillsli a").on('click',function(){
+		$("#reset_passPop").hide();
+		$("#history-notes-tasks").show();
+		$('#createSkill').hide();
+		$('#skillsli button').show();
+	});
+	
+	$("#passwordLink_btn").unbind("click");
+	$("#passwordLink_btn").on("click",function()
+	{
+		 console.info("reset password link is clicked");
+		 resetPasswordLink($("#loginId input").val());
+	});
+	$("#admin_sendresetpasswordlink, #resetpasswordlabel").unbind("click");
+	$("#admin_sendresetpasswordlink, #resetpasswordlabel").on("click",function()
+	{
+		 
+		 $("#changepassword_li").removeClass("active");
+		 $("#sendlink_li").addClass("active");
+		 $(".passworddiv input").attr("readonly","readOnly");
+		 
+		//resetPassword(staffEmailId,"#resetpasswordalert");
+		$("#admin_sendresetpasswordlink").prop('checked', true);
+		$("#passwordLink_btn").show();
+		$("#savepwd_btn").hide();
+	});
+
+	$('#searchContactInputHolder').unbind("keyup");
+	$('#searchContactInputHolder').on("keyup",function() 
+	{
+		var searchWord = $(this).val().toLowerCase();
+		console.log(searchWord);
+
+		if (searchWord.length >= 1)
+		{
+			$("#staff-list-ul li").each(function() 
+			{
+				var parentId		=	$(this).attr("id");
+				$(this).find("b").each(function() 
+				{
+					var inputtext = $(this).html().toLowerCase();
+					if(inputtext.match(RegExp(searchWord))) 
+					{ 
+					 	$("#"+parentId).css("display","block");
+					 	return false;
+					}
+					else
+					{
+						$("#"+parentId).css("display","none");
+					}
+				});
+				$(this).find("p").each(function() 
+				{
+					var inputtext = $(this).html().toLowerCase();
+					if(inputtext.match(RegExp(searchWord))) 
+					{ 
+					 	$("#"+parentId).css("display","block");
+					 	return false;
+					}
+				});
+			});
+			
+		}
+		else
+		{
+			console.info("inside else");
+			$("#staff-list-ul li").show();
+		}
+	});
+	$("#search-btn").unbind('click');
+	 $('#search-btn').on('click',function(){
+		 if($('.SearchDropContainer').css('display')=='block')
+		 $('.SearchDropContainer').hide();
+		 else
+		 {
+			 $('.SearchDropContainer').show();
+			 $('#searchContactInputHolder').focus();
+		 }
+	 });
+	 $('#addNewContact').unbind('click');
+	 $('#addNewContact').on('click',function()
+	{
+		 createStaff();
+		 $('#history-notes-tasks').hide();
+		 $('#reset_passPop').hide();
+		 $('#history-notes-tasks').html('');
+		 $('#createSkill').hide();
+	 });
+	 $('#cancelNewContact').unbind('click');
+	 $('#cancelNewContact').on('click',function(){
+		 var id	=	$(this).parent().attr('id');
+		 console.log('id : '+id);
+		 removeDom(id);
+	 });
+	 $('#addStaff').unbind('click');
+	 $('#addStaff').on('click',function(){
+		 staffFunctions.addStaff();
+	 });
+	 $('#addSkill-li').unbind('click');
+	 $('#addSkill-li').on('click',function(){
+		$('#createSkill').show();
+		$("#reset_passPop").hide();
+		$("#history-notes-tasks").hide();
+	 });
+	 
+	 $('#create-skill-new button').unbind('click');
+	 $('#create-skill-new button').on('click',function(){
+		 skillFunctions.createSkill();
+	 });
+}
+function showVoiceBox(msg, timeout) // add all the msg objects in one js file and get them from there.
+{
+
+	$("#notification").show();
+	$("#notification").html(msg);
+	if(timeout!=undefined && timeout!='')
+	{
+		$('#notification').fadeOut(timeout, function() {
+			$("#notification").html("");
+		});
+	}
+}
+function defaultContactMethodList(){
+	var contactMethodList = new Array();
+	var phoneContactMethod  	= 	getNewContactMethod();
+	
+	phoneContactMethod.type 	= 	"Phone";
+	phoneContactMethod.typeID 	=	"867d8a67-1d8a-4f4b-a33d-b5c9ab94bb4d";
+	phoneContactMethod.value	=	"";
+	contactMethodList[contactMethodList.length]=phoneContactMethod;
+	
+	return contactMethodList;
+}
+function getDefaultSkills()
+{
+	var contactSkillSet	=	new Object();
+	contactSkillSet.accountID	=	"";
+	contactSkillSet.brandID		=	"";
+	contactSkillSet.contactID	=	"";
+	contactSkillSet.createDate	=	"";
+	contactSkillSet.delted		=	false;
+	contactSkillSet.id			=	generateUUID();
+	contactSkillSet.skillLevel	=	"";
+	contactSkillSet.skillSetID	=	"";
+	contactSkillSet.url			=	"";
+	return contactSkillSet;
+}
+
+function getNewContactMethod()
+{
+	var newContactMethod = new Object();
+	
+	newContactMethod.id = generateUUID();
+	newContactMethod.type  = "";
+	newContactMethod.typeID= "";
+	newContactMethod.title = "";
+	newContactMethod.value = "";
+	newContactMethod.deleted = false;
+	
+	return newContactMethod;
+	
+}
+
+function createStaff()
+{
+	var newContact = new Object();
+	newContact.login				="";
+	newContact.firstName 			= "";
+	newContact.name 				= "";
+	newContact.middleName 			= "";
+	newContact.lastName 			= "";
+	newContact.id 					= generateUUID();
+	newContact.category 			= "person";
+	newContact.title 				= "";
+	newContact.type 				= "contact";
+	newContact.source 				= null;
+	newContact.comments 			= "";
+	newContact.password 			= "";
+	newContact.ownerID 				= null;
+	newContact.accountNumber 		= "";
+	newContact.brandID 				= brandID;
+	newContact.linkedContactMethods = new Array();
+	newContact.linkedLocations 		= new Array();
+	newContact.isNew 				= true;
+	newContact.deleted				=	false;
+	//newContact.linkedContactMethods = defaultContactMethodList();
+	
+	qualifiedStaff.splice(0, 0, newContact);
+	currentContact 			= newContact;
+	
+	var locationURL 		= document.location.href;
+	
+	if(locationURL.indexOf("addStaff") == -1)
+	{
+		var url 			= locationURL.split("#")[0];
+		document.location.href= url+'#addStaff/'
+		console.log(document.location.href);
+	}
+	
+	$("#staff-list-ul li").removeClass('selected');
+	var contactLI			= document.createElement("li");
+	$(contactLI).attr("id",newContact.id)
+				.attr('class','selected');
+	var contactImgDiv = document.createElement('div');
+	$(contactImgDiv).attr('class','avatar span2 pull-left');
+	
+	var contactImage = document.createElement('img');
+	$(contactImage).attr('src',defaultImageURLPath+"/images/user-icon.jpg");
+	
+	$(contactImgDiv).append(contactImage);
+	$(contactLI).append(contactImgDiv);
+	$(contactLI).append('<b class="contact_name">Name</b><p></p>');
+	$("#staff-list-ul").prepend(contactLI);
+	bindEvents();	
+	var contactSkillSetObj			=	getDefaultSkills();
+	contactSkillSetObj.contactID	=	newContact.id;
+	console.log('Contactid : '+newContact.id);
+	contactSkillSet.push(contactSkillSetObj);
+	
+	var addContact 					= new staffDetailView();
+	console.log(newContact.id);
+	addContact.render(newContact);
+	console.log(contactSkillSetObj);
+	
+	var addContactskill				=	new staffSkillView();
+	addContactskill.render(contactSkillSetObj);
+	loadFunctions();
+}
+
+
+function showError(message)
+{
+	if(validate.variable(message))
+		bootbox.alert(message);
+	bootbox.alert("Field Cannot be Empty");
+}
+
+function IsJsonString(str) 
+{
+    try 
+    {
+        JSON.parse(str);
+    }
+    catch (e) 
+    {
+        return false;
+    }
+    return true;
+}
+function validateMandatoryFields(obj)
+{
+	var status	=	true;
+	
+	try
+	{
+		if(!validate.variable(obj.login) )
+		return false;
+		if(!validate.variable(obj.password))
+			return false;
+		if(!validate.variable(obj.name))
+			return false;
+		return true;	
+	}
+	catch(e)
+	{
+		console.log(e);
+	}
+}
+function editContactName()
+{
+	var contactName	=	$.trim($('#staffName').val());
+	$('#'+currentContact.id+' b').html(contactName);	
+}
+function editLogin()
+{
+	var login	=	$.trim($('#loginId input').val());
+	$('#'+currentContact.id+' p').html(login);
+}
+function updateStaff(id)
+{
+	var param	=	prepareUpdateObject(id);
+	var value	=	$("#designation input").val();
+	
+	console.log(param);
+	if(validate.variable(value))
+	{
+		console.log("value : " +value);
+		param.title	=	encodeURIComponent(value);
+		console.log(param);
+		url 		= staffFunctions.URL+"?uniquepin="+accountID+"&reqParam="+JSON.stringify(param)+'&callback=?';
+		getJSON(url,staffFunctions.staffSuccess);
+	}
+}
+function removeDom(id)
+{
+	 $('#'+currentContact.id).remove();
+	 qualifiedStaff.splice(0,1);
+	 currentContact	=	qualifiedStaff[0];
+	 document.location.href=document.location.href.split('#')[0]+'#editStaff/'+currentContact.id;
+}
+function sortContacts(event)
+{
+	event = event||window.event;
+	var targetElement = event.target || event.srcElement;
+	
+	if(qualifiedStaff == null || qualifiedStaff <=0){
+		return;
+	}
+	
+	event.stopPropagation();
+	var contactListView 	= new staffListView();
+	if($(targetElement).html() == "First Name"){
+		contactList 		= 	sortContactListByFirstName();
+	}else{
+		contactList 		=	sortContactListByLastName();
+	}
+	contactListView.render(qualifiedStaff);
+	return true;
+} 
+function sortContactListByFirstName()
+{
+	
+	
+	var tempContactList 	= new Array();
+	var tempNamedArray		= new Array();
+	var tempSortedArray 	= new Array();
+	
+	for(var cIndex = 0; cIndex < qualifiedStaff.length; cIndex++)
+	{
+		tempNamedArray[qualifiedStaff[cIndex].id] = qualifiedStaff[cIndex];
+		
+		if(qualifiedStaff[cIndex].category == 'company')
+		{
+			tempSortedArray[tempSortedArray.length] = qualifiedStaff[cIndex].fullName.toLowerCase() +"`"+ qualifiedStaff[cIndex].id;
+		}
+		else
+		{
+			tempSortedArray[tempSortedArray.length] = qualifiedStaff[cIndex].firstName.toLowerCase() + " " + qualifiedStaff[cIndex].lastName.toLowerCase()+ "`"+ qualifiedStaff[cIndex].id;
+		}
+	}
+	tempSortedArray =	tempSortedArray.sort();
+	
+	for(var tcIndex = 0; tcIndex < tempSortedArray.length; tcIndex++)
+	{
+		var value = tempSortedArray[tcIndex];
+		var id = value.split("`")[1]; 
+		tempContactList[tempContactList.length] =  tempNamedArray[id];
+	}
+	return tempContactList;
+}
+
+function sortContactListByLastName()
+{
+	var tempContactList = new Array();
+	var tempNamedArray = new Array();
+	var tempSortedArray = new Array();
+	// Create array with values as lastname firstname'contactid and sort it
+	contactList	=	qualifiedStaff;
+	for(var cIndex = 0; cIndex < qualifiedStaff.length; cIndex++){
+		tempNamedArray[qualifiedStaff[cIndex].id] = qualifiedStaff[cIndex];
+		
+		if(qualifiedStaff[cIndex].category == 'company'){
+			tempSortedArray[tempSortedArray.length] = qualifiedStaff[cIndex].fullName.toLowerCase() +"`"+ qualifiedStaff[cIndex].id;
+		}else{
+			tempSortedArray[tempSortedArray.length] = qualifiedStaff[cIndex].lastName.toLowerCase() + " " + qualifiedStaff[cIndex].firstName.toLowerCase() + "`"+ qualifiedStaff[cIndex].id;
+		}
+	}
+	tempSortedArray =	tempSortedArray.sort();
+	for(var tcIndex = 0; tcIndex < tempSortedArray.length; tcIndex++){
+		var value = tempSortedArray[tcIndex];
+		var id = value.split("`")[1]; 
+		tempContactList[tempContactList.length] =  tempNamedArray[id];
+	}
+	return tempContactList;
+} 
+function addStaffContactMethod(event,contactID)
+{
+	try{
+	event = event||window.event;
+	var targetElement = event.target || event.srcElement;
+	
+	var contactMethodTypeElement	= $(targetElement);
+	var contactObject 				= getStaffDetail (contactID);
+	console.log('contactObject');
+	console.log(contactObject);
+	var contactMethodType 			= $(contactMethodTypeElement).html();
+	var contactMethodTypeID			= $(contactMethodTypeElement).closest('li').attr('id');
+	
+	var contactMethod_Object 		= getNewContactMethod();
+	contactMethod_Object.isNew 		= true;
+	contactMethod_Object.type		= getContactMethodType(contactMethodTypeID);
+	contactMethod_Object.typeID		= contactMethodTypeID;
+	
+	if(contactObject.linkedContactMethods == null || contactObject.linkedContactMethods == '')
+	{
+		linkedContactMethods = new Array();
+	}
+	contactObject.linkedContactMethods[contactObject.linkedContactMethods.length]=contactMethod_Object;
+	var contactMethodLI		=	document.createElement("li");
+	$(contactMethodLI).attr('id',contactMethod_Object.id)
+					  .addClass("span12");
+	var contactMethodLabel	=	document.createElement("label");
+	$(contactMethodLabel).addClass("span3");
+	$(contactMethodLabel).append("<i class='icon-ok pull-left'></i>"+contactMethodType);
+	$(contactMethodLI).append(contactMethodLabel);
+	
+	var contactMethodInput	=	document.createElement('input');
+	$(contactMethodInput).attr('type','text')
+						 .attr('onchange','staffFunctions.updatePhone("'+contactID+'","'+contactMethod_Object.id+'")')
+						 .addClass("span8")
+						 .attr('value',"");
+	
+	$(contactMethodLI).append(contactMethodInput);
+	
+	
+	/*var contactMethod_a		=	document.createElement('a');
+	$(contactMethod_a).addClass("span1 icon-batch-icons-webfont-16")
+					  .attr('data-toggle','modal')
+					  .attr('role','button')
+					  .attr('id','remove_'+contactMethod_Object.id)
+					  .attr('onClick','deleteContactMethod("'+contactMethod_Object.id+'","'+contactID+'")');
+	$(contactMethodLI).append(contactMethod_a);*/
+	console.log(contactMethodLI);
+	
+	
+	$("#contactMethodsListDetail_"+contactID).append(contactMethodLI);
+	}catch(e){console.error(e);}
+	
+}
+function getContactMethodType(contactMethodTypeID){
+	var contactMethodType = "";
+	contactMethodTypeID = $.trim(contactMethodTypeID);
+	
+	if(contactMethodTypeID == phone){
+		contactMethodType = "phone";
+	}
+	
+	/*if(contactMethodTypeID == text){
+		contactMethodType = "text";
+	}else if(contactMethodTypeID == email){
+		contactMethodType = "email";
+	} else
+	if(contactMethodTypeID == phone){
+		contactMethodType = "phone";
+	}else if(contactMethodTypeID == fax){
+		contactMethodType = "fax";
+	}else if(contactMethodTypeID == mailtext){
+		contactMethodType = "mailtext";
+	}else if(contactMethodTypeID == email_attachment){
+		contactMethodType = "email_attachment";
+	}else if(contactMethodTypeID == email_csvattachment){
+		contactMethodType = "email_csvattachment";
+	}else if(contactMethodTypeID == web){
+		contactMethodType = "web";
+	}*/
+	
+	return contactMethodType;
+}
+
